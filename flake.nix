@@ -1,15 +1,23 @@
 {
   description = "Solana CLI";
 
-  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-  inputs.flake-utils.url = "github:numtide/flake-utils";
-  inputs.solanaSrc.url = "github:solana-labs/solana?rev=4892eb4e1ad278d5249b6cda8983f88effb3e98b";
-  inputs.solanaSrc.flake = false;
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
+    solana-src = {
+	    url = "github:solana-labs/solana?tag=v1.8.2";
+    	flake = false;
+    };
+		fenix = {
+      url = "github:nix-community/fenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
 
-  outputs = { self, nixpkgs, flake-utils, solanaSrc }:
-    flake-utils.lib.eachSystem [ "x86_64-linux" "x86_64-darwin" "aarch64-darwin" ] (system:
+  outputs = { self, nixpkgs, flake-utils, solana-src, fenix }:
+    flake-utils.lib.eachDefaultSystem (system:
       let
-        pkgs = import nixpkgs { inherit system; };
+        pkgs = nixpkgs.legacyPackages.${system};
 
         # https://github.com/solana-labs/solana/blob/master/scripts/cargo-install-all.sh#L71
         endUserBins = [
@@ -22,8 +30,7 @@
           "solana-faucet"
           "solana-stake-accounts"
           "solana-tokens"
-          # Linker error on Darwin about System framework
-          # "solana-test-validator"
+          "solana-test-validator"
         ];
 
         meta = with pkgs.stdenv; with pkgs.lib; {
@@ -32,23 +39,26 @@
           platforms = platforms.unix ++ platforms.darwin;
         };
 
+        llvmPkgs = pkgs.llvmPackages_12;
+        clangPkg = pkgs.clang_12;
+
         # Here's an unfinished attempt at adding solana to Nixpkgs where the
         # person had to remove some tests and comment some out.
         # https://github.com/NixOS/nixpkgs/pull/121009/files
-        solana = pkgs.rustPlatform.buildRustPackage
-          rec {
-            inherit meta;
+        solana = (pkgs.makeRustPlatform {
+          inherit (fenix.packages.${system}.stable) cargo rustc;
+        }).buildRustPackage {
             pname = "solana";
-            version = "1.7.15";
-            src = solanaSrc;
-            cargoSha256 = "1ndvqskfcix17a5h2rwcnhyq14ngcnaq9kmaq2qvxr8lgv23an21";
+            version = "1.8.2";
+            src = solana-src;
+            cargoSha256 = "sha256-YVZ3MVbMWn2lKlH9qtIGyK+pxlVDRvc35SXEFPXM79M=";#pkgs.lib.fakeSha256;
 
             doCheck = false;
 
             nativeBuildInputs = with pkgs; [
               rustfmt
-              llvm
-              clang
+              llvmPkgs.llvm
+              clangPkg
               protobuf
               pkg-config
             ];
@@ -56,7 +66,7 @@
             buildInputs = with pkgs; [
               hidapi
               rustfmt
-              libclang
+              llvmPkgs.libclang
               openssl
               zlib
             ] ++ (with pkgs.darwin.apple_sdk.frameworks; pkgs.lib.optionals pkgs.stdenv.isDarwin [
@@ -86,6 +96,11 @@
             LLVM_CONFIG_PATH = "${pkgs.llvm}/bin/llvm-config";
 
             cargoBuildFlags = builtins.map (binName: "--bin=${binName}") endUserBins;
+
+            postInstall = ''
+            	mkdir -p $out/bin/sdk
+            	cp -r ${solana-src}/sdk/bpf $out/bin/sdk/
+            '';
           };
 
       in
