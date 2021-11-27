@@ -1,0 +1,184 @@
+diff --git a/sdk/cargo-build-bpf/src/main.rs b/sdk/cargo-build-bpf/src/main.rs
+index 6837bffd8..a60c61721 100644
+--- a/sdk/cargo-build-bpf/src/main.rs
++++ b/sdk/cargo-build-bpf/src/main.rs
+@@ -24,6 +24,7 @@ struct Config<'a> {
+     cargo_args: Option<Vec<&'a str>>,
+     bpf_out_dir: Option<PathBuf>,
+     bpf_sdk: PathBuf,
++    bpf_tools: Option<PathBuf>,
+     dump: bool,
+     features: Vec<String>,
+     generate_child_script_on_failure: bool,
+@@ -33,6 +34,15 @@ struct Config<'a> {
+     workspace: bool,
+ }
+ 
++impl Config<'_> {
++    fn bpf_tools_dir(&self) -> PathBuf {
++        match &self.bpf_tools {
++            Some(buf) => buf.clone(),
++            None => self.bpf_sdk.join("dependencies").join("bpf-tools"),
++        }
++    }
++}
++
+ impl Default for Config<'_> {
+     fn default() -> Self {
+         Self {
+@@ -45,6 +55,7 @@ impl Default for Config<'_> {
+                 .join("sdk")
+                 .join("bpf"),
+             bpf_out_dir: None,
++            bpf_tools: None,
+             dump: false,
+             features: vec![],
+             generate_child_script_on_failure: false,
+@@ -308,9 +319,7 @@ fn check_undefined_symbols(config: &Config, program: &Path) {
+         Regex::new(r"^ *[0-9]+: [0-9a-f]{16} +[0-9a-f]+ +NOTYPE +GLOBAL +DEFAULT +UND +(.+)")
+             .unwrap();
+     let readelf = config
+-        .bpf_sdk
+-        .join("dependencies")
+-        .join("bpf-tools")
++        .bpf_tools_dir()
+         .join("llvm")
+         .join("bin")
+         .join("llvm-readelf");
+@@ -346,11 +355,7 @@ fn check_undefined_symbols(config: &Config, program: &Path) {
+ 
+ // check whether custom BPF toolchain is linked, and link it if it is not.
+ fn link_bpf_toolchain(config: &Config) {
+-    let toolchain_path = config
+-        .bpf_sdk
+-        .join("dependencies")
+-        .join("bpf-tools")
+-        .join("rust");
++    let toolchain_path = config.bpf_tools_dir().join("rust");
+     let rustup = PathBuf::from("rustup");
+     let rustup_args = vec!["toolchain", "list", "-v"];
+     let rustup_output = spawn(
+@@ -484,37 +489,36 @@ fn build_bpf_package(config: &Config, target_directory: &Path, package: &cargo_m
+         .join("solana")
+         .join(version)
+         .join(package);
+-    install_if_missing(
+-        config,
+-        package,
+-        version,
+-        "https://github.com/solana-labs/bpf-tools/releases/download",
+-        bpf_tools_download_file_name,
+-        &target_path,
+-    )
+-    .unwrap_or_else(|err| {
+-        // The package version directory doesn't contain a valid
+-        // installation, and it should be removed.
+-        let target_path_parent = target_path.parent().expect("Invalid package path");
+-        fs::remove_dir_all(&target_path_parent).unwrap_or_else(|err| {
+-            eprintln!(
+-                "Failed to remove {} while recovering from installation failure: {}",
+-                target_path_parent.to_string_lossy(),
+-                err,
+-            );
++    if config.bpf_tools.is_none() {
++        install_if_missing(
++            config,
++            package,
++            version,
++            "https://github.com/solana-labs/bpf-tools/releases/download",
++            bpf_tools_download_file_name,
++            &target_path,
++        )
++        .unwrap_or_else(|err| {
++            // The package version directory doesn't contain a valid
++            // installation, and it should be removed.
++            let target_path_parent = target_path.parent().expect("Invalid package path");
++            fs::remove_dir_all(&target_path_parent).unwrap_or_else(|err| {
++                eprintln!(
++                    "Failed to remove {} while recovering from installation failure: {}",
++                    target_path_parent.to_string_lossy(),
++                    err,
++                );
++                exit(1);
++            });
++            eprintln!("Failed to install bpf-tools: {}", err);
+             exit(1);
+         });
+-        eprintln!("Failed to install bpf-tools: {}", err);
+-        exit(1);
+-    });
+-    link_bpf_toolchain(config);
++    }
++
++    //link_bpf_toolchain(config);
++
++    let llvm_bin = config.bpf_tools_dir().join("llvm").join("bin");
+ 
+-    let llvm_bin = config
+-        .bpf_sdk
+-        .join("dependencies")
+-        .join("bpf-tools")
+-        .join("llvm")
+-        .join("bin");
+     env::set_var("CC", llvm_bin.join("clang"));
+     env::set_var("AR", llvm_bin.join("llvm-ar"));
+     env::set_var("OBJDUMP", llvm_bin.join("llvm-objdump"));
+@@ -533,9 +537,17 @@ fn build_bpf_package(config: &Config, target_directory: &Path, package: &cargo_m
+         println!("RUSTFLAGS={}", rustflags);
+     }
+     env::set_var("RUSTFLAGS", rustflags);
++
++    let rustc_path = config
++        .bpf_tools_dir()
++        .join("rust")
++        .join("bin")
++        .join("rustc");
++    env::set_var("CARGO_BUILD_RUSTC", rustc_path);
++
+     let cargo_build = PathBuf::from("cargo");
+     let mut cargo_build_args = vec![
+-        "+bpf",
++        //"+bpf",
+         "build",
+         "--target",
+         "bpfel-unknown-unknown",
+@@ -720,6 +732,14 @@ fn main() {
+                 .default_value(&default_bpf_sdk)
+                 .help("Path to the Solana BPF SDK"),
+         )
++        .arg(
++            Arg::with_name("bpf_tools")
++                .env("BPF_TOOLS_PATH")
++                .long("bpf-tools")
++                .value_name("PATH")
++                .takes_value(true)
++                .help("Path to the Solana BPF Tools"),
++        )
+         .arg(
+             Arg::with_name("cargo_args")
+                 .help("Arguments passed directly to `cargo build`")
+@@ -783,6 +803,7 @@ fn main() {
+ 
+     let bpf_sdk = value_t_or_exit!(matches, "bpf_sdk", PathBuf);
+     let bpf_out_dir = value_t!(matches, "bpf_out_dir", PathBuf).ok();
++    let bpf_tools = value_t!(matches, "bpf_tools", PathBuf).ok();
+ 
+     let config = Config {
+         cargo_args: matches
+@@ -805,6 +826,16 @@ fn main() {
+                     .join(bpf_out_dir)
+             }
+         }),
++        bpf_tools: bpf_tools.map(|bpf_tools| {
++            bpf_tools.canonicalize().unwrap_or_else(|err| {
++                eprintln!(
++                    "BPF Tools path does not exist: {}: {}",
++                    bpf_tools.display(),
++                    err
++                );
++                exit(1);
++            })
++        }),
+         dump: matches.is_present("dump"),
+         features: values_t!(matches, "features", String)
+             .ok()

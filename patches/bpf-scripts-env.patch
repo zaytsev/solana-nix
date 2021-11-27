@@ -1,0 +1,14 @@
+diff --git a/sdk/bpf/env.sh b/sdk/bpf/env.sh
+index 8c1562587..ebc7306e9 100644
+--- a/sdk/bpf/env.sh
++++ b/sdk/bpf/env.sh
+@@ -6,9 +6,6 @@ if [ -z "$bpf_sdk" ]; then
+   bpf_sdk=.
+ fi
+ 
+-# Ensure the sdk is installed
+-"$bpf_sdk"/scripts/install.sh
+-
+ # Use the SDK's version of llvm to build the compiler-builtins for BPF
+ export CC="$bpf_sdk/dependencies/bpf-tools/llvm/bin/clang"
+ export AR="$bpf_sdk/dependencies/bpf-tools/llvm/bin/llvm-ar"
