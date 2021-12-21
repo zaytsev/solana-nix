@@ -5,7 +5,7 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     solanaSrc = {
-      url = "github:solana-labs/solana/v1.8.5";
+      url = "github:solana-labs/solana/v1.9.1";
       flake = false;
     };
     fenix = {
@@ -19,7 +19,7 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
         stdenv = pkgs.stdenv;
-        solanaVersion = "1.8.5";
+        solanaVersion = "1.9.1";
 
         meta = with pkgs.stdenv; with pkgs.lib; {
           homepage = "https://solana.com/";
@@ -45,6 +45,7 @@
             clangPkg
             protobuf
             pkg-config
+            perl
           ];
 
           buildInputs = with pkgs; [
@@ -86,7 +87,7 @@
           pname = "solana-cli";
           version = solanaVersion;
           buildTargets = [ "solana" "solana-keygen" ];
-          cargoSha256 = "sha256-BYbhbHl+PoTHFbK5HbXZT9Y1/U2uxnYO2OnVt/wsdwU=";
+          cargoSha256 = "sha256-yHaNMwDPvGfcDSVn8/yuTyyobNG7wys/MCSwJ7XGsj4=";
           #cargoSha256 = pkgs.lib.fakeSha256;
         };
 
@@ -95,7 +96,7 @@
           version = solanaVersion;
           buildTargets = [ "cargo-build-bpf" "cargo-test-bpf" "solana-test-validator" ];
           patches = [ ./patches/cargo-build-bpf-tools.patch ./patches/bpf-scripts-env.patch ];
-          cargoSha256 = "sha256-flzkLcLSnOWq3nQshn1FuyI86AtqfL/m6zxORqu6kyY=";
+          cargoSha256 = "sha256-WQ+jv7y6627HuwLp4y3A4J3BFKc6IBmvAussKSzmOBo=";
           #cargoSha256 = pkgs.lib.fakeSha256;
           postInstall = ''
             	mkdir -p $out/bpf/dependencies/
@@ -107,10 +108,10 @@
 
         bpfTools = stdenv.mkDerivation {
           pname = "solana-bpf-tools";
-          version = "1.19";
+          version = "1.21";
           src = builtins.fetchurl {
-            url = "https://github.com/solana-labs/bpf-tools/releases/download/v1.19/solana-bpf-tools-linux.tar.bz2";
-            sha256 = "03n3mjxms7j0lqkh1572x1ib6x2ha6jz4lw3d8jzyp9nfhv4xbs2";
+            url = "https://github.com/solana-labs/bpf-tools/releases/download/v1.21/solana-bpf-tools-linux.tar.bz2";
+            sha256 = "sha256:0cwkda0j7jyzga7bls60m5fzc515jxvd0icaijc3g76x3dy50k3w";
           };
 
           nativeBuildInputs = with pkgs; [ gnutar ];
