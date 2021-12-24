@@ -131,22 +131,19 @@
           '';
 
           fixupPhase = ''
-                if [ -d $out/rust/bin ]; then
-                  for file in $(find $out/rust/bin -type f); do
+                if [ -d $out/rust ]; then
+                  for file in $(find $out/rust -type f); do
                     if isELF "$file"; then
+                      if [ -n $(file $file | grep interpreter) ]; then
                       patchelf \
                         --set-interpreter ${stdenv.cc.bintools.dynamicLinker} \
                         --set-rpath "${pkgs.lib.makeLibraryPath [ stdenv.cc.cc pkgs.zlib pkgs.openssl ]}:$out/rust/lib" \
                         "$file" || true
-                    fi
-                  done
-                fi
-                if [ -d $out/rust/lib ]; then
-                  for file in $(find $out/rust/lib -type f); do
-                    if isELF "$file"; then
+                      else
                       patchelf \
                         --set-rpath "${pkgs.lib.makeLibraryPath [ stdenv.cc.cc pkgs.zlib pkgs.openssl ]}:$out/rust/lib" \
                         "$file" || true
+                      fi
                     fi
                   done
                 fi
