@@ -88,7 +88,7 @@
           pname = "solana-cli";
           version = solanaVersion;
           buildTargets = [ "solana" "solana-keygen" ];
-          cargoSha256 = "sha256-9uDG/z31VnkhogHYfFwDu07Yzs6goZfKx53a4VFho18=";
+          cargoSha256 = "sha256-4t5LqNkjNCEp1ygh7p7i4wP879fS83gsf2uoYz3oe3k=";
           #cargoSha256 = pkgs.lib.fakeSha256;
         };
 
