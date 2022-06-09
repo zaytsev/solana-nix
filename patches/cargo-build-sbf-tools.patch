@@ -1,0 +1,129 @@
+diff --git a/sdk/cargo-build-sbf/src/main.rs b/sdk/cargo-build-sbf/src/main.rs
+index 40bb82cd2e..143c228747 100644
+--- a/sdk/cargo-build-sbf/src/main.rs
++++ b/sdk/cargo-build-sbf/src/main.rs
+@@ -22,6 +22,7 @@ struct Config<'a> {
+     cargo_args: Option<Vec<&'a str>>,
+     sbf_out_dir: Option<PathBuf>,
+     sbf_sdk: PathBuf,
++    sbf_tools: Option<PathBuf>,
+     sbf_tools_version: &'a str,
+     dump: bool,
+     features: Vec<String>,
+@@ -45,6 +46,7 @@ impl Default for Config<'_> {
+                 .join("sdk")
+                 .join("bpf"),
+             sbf_out_dir: None,
++            sbf_tools: None,
+             sbf_tools_version: "(unknown)",
+             dump: false,
+             features: vec![],
+@@ -347,11 +349,13 @@ fn check_undefined_symbols(config: &Config, program: &Path) {
+ 
+ // check whether custom SBF toolchain is linked, and link it if it is not.
+ fn link_sbf_toolchain(config: &Config) {
+-    let toolchain_path = config
+-        .sbf_sdk
+-        .join("dependencies")
+-        .join("sbf-tools")
+-        .join("rust");
++    let toolchain_path = config.sbf_tools.clone().unwrap_or_else(|| {
++        config
++            .sbf_sdk
++            .join("dependencies")
++            .join("sbf-tools")
++            .join("rust")
++    });
+     let rustup = PathBuf::from("rustup");
+     let rustup_args = vec!["toolchain", "list", "-v"];
+     let rustup_output = spawn(
+@@ -480,29 +484,32 @@ fn build_sbf_package(config: &Config, target_directory: &Path, package: &cargo_m
+         .join("solana")
+         .join(config.sbf_tools_version)
+         .join(package);
+-    install_if_missing(
+-        config,
+-        package,
+-        "https://github.com/solana-labs/bpf-tools/releases/download",
+-        sbf_tools_download_file_name,
+-        &target_path,
+-    )
+-    .unwrap_or_else(|err| {
+-        // The package version directory doesn't contain a valid
+-        // installation, and it should be removed.
+-        let target_path_parent = target_path.parent().expect("Invalid package path");
+-        fs::remove_dir_all(&target_path_parent).unwrap_or_else(|err| {
+-            error!(
+-                "Failed to remove {} while recovering from installation failure: {}",
+-                target_path_parent.to_string_lossy(),
+-                err,
+-            );
++    if config.sbf_tools.is_none() {
++        install_if_missing(
++            config,
++            package,
++            "https://github.com/solana-labs/bpf-tools/releases/download",
++            sbf_tools_download_file_name,
++            &target_path,
++        )
++        .unwrap_or_else(|err| {
++            // The package version directory doesn't contain a valid
++            // installation, and it should be removed.
++            let target_path_parent = target_path.parent().expect("Invalid package path");
++            fs::remove_dir_all(&target_path_parent).unwrap_or_else(|err| {
++                error!(
++                    "Failed to remove {} while recovering from installation failure: {}",
++                    target_path_parent.to_string_lossy(),
++                    err,
++                );
++                exit(1);
++            });
++            error!("Failed to install sbf-tools: {}", err);
+             exit(1);
+         });
+-        error!("Failed to install sbf-tools: {}", err);
+-        exit(1);
+-    });
+-    link_sbf_toolchain(config);
++
++        link_sbf_toolchain(config);
++    }
+ 
+     let llvm_bin = config
+         .sbf_sdk
+@@ -736,6 +743,14 @@ fn main() {
+                 .default_value(&default_sbf_sdk)
+                 .help("Path to the Solana SBF SDK"),
+         )
++        .arg(
++            Arg::new("sbf_tools")
++                .env("SBF_TOOLS_PATH")
++                .long("sbf-tools")
++                .value_name("PATH")
++                .takes_value(true)
++                .help("Path to the Solana SBF Tools"),
++        )
+         .arg(
+             Arg::new("cargo_args")
+                 .help("Arguments passed directly to `cargo build`")
+@@ -810,6 +825,7 @@ fn main() {
+ 
+     let sbf_sdk: PathBuf = matches.value_of_t_or_exit("sbf_sdk");
+     let sbf_out_dir: Option<PathBuf> = matches.value_of_t("sbf_out_dir").ok();
++    let sbf_tools: Option<PathBuf> = matches.value_of_t("sbf_tools").ok();
+ 
+     let config = Config {
+         cargo_args: matches
+@@ -832,6 +848,12 @@ fn main() {
+                     .join(sbf_out_dir)
+             }
+         }),
++        sbf_tools: sbf_tools.map(|path| {
++            path.canonicalize().unwrap_or_else(|err| {
++                error!("SBF Tools path doesn't exist: {}: {}", path.display(), err);
++                exit(1);
++            })
++        }),
+         sbf_tools_version,
+         dump: matches.is_present("dump"),
+         features: matches.values_of_t("features").ok().unwrap_or_default(),

@@ -5,7 +5,8 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     solanaSrc = {
-      url = "github:solana-labs/solana/v1.9.1";
+      #url = "github:solana-labs/solana?rev=15456493b4161ca0c673995f3cd0c69b815a945a";
+      url = "github:solana-labs/solana?ref=v1.10.24";
       flake = false;
     };
     fenix = {
@@ -19,7 +20,7 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
         stdenv = pkgs.stdenv;
-        solanaVersion = "1.9.1";
+        solanaVersion = "1.10.24";
 
         meta = with pkgs.stdenv; with pkgs.lib; {
           homepage = "https://solana.com/";
@@ -87,7 +88,7 @@
           pname = "solana-cli";
           version = solanaVersion;
           buildTargets = [ "solana" "solana-keygen" ];
-          cargoSha256 = "sha256-yHaNMwDPvGfcDSVn8/yuTyyobNG7wys/MCSwJ7XGsj4=";
+          cargoSha256 = "sha256-9uDG/z31VnkhogHYfFwDu07Yzs6goZfKx53a4VFho18=";
           #cargoSha256 = pkgs.lib.fakeSha256;
         };
 
@@ -96,7 +97,7 @@
           version = solanaVersion;
           buildTargets = [ "cargo-build-bpf" "cargo-test-bpf" "solana-test-validator" ];
           patches = [ ./patches/cargo-build-bpf-tools.patch ./patches/bpf-scripts-env.patch ];
-          cargoSha256 = "sha256-WQ+jv7y6627HuwLp4y3A4J3BFKc6IBmvAussKSzmOBo=";
+          cargoSha256 = "sha256-yOBgcFBfwwMNnsn0Q1qSwDWJ4vkuZBlRGP3q1PQbfZw=";
           #cargoSha256 = pkgs.lib.fakeSha256;
           postInstall = ''
             	mkdir -p $out/bpf/dependencies/
@@ -108,9 +109,9 @@
 
         bpfTools = stdenv.mkDerivation {
           pname = "solana-bpf-tools";
-          version = "1.21";
+          version = "1.27";
           src = builtins.fetchurl {
-            url = "https://github.com/solana-labs/bpf-tools/releases/download/v1.21/solana-bpf-tools-linux.tar.bz2";
+            url = "https://github.com/solana-labs/bpf-tools/releases/download/v1.27/solana-bpf-tools-linux.tar.bz2";
             sha256 = "sha256:0cwkda0j7jyzga7bls60m5fzc515jxvd0icaijc3g76x3dy50k3w";
           };
 
