@@ -112,7 +112,7 @@
           version = "1.27";
           src = builtins.fetchurl {
             url = "https://github.com/solana-labs/bpf-tools/releases/download/v1.27/solana-bpf-tools-linux.tar.bz2";
-            sha256 = "sha256:0cwkda0j7jyzga7bls60m5fzc515jxvd0icaijc3g76x3dy50k3w";
+            sha256 = "sha256:1zx8x4zpv4ijfymkakj46z53635yjjnjs1ipmv9050j9idynlbca";
           };
 
           nativeBuildInputs = with pkgs; [ gnutar ];
