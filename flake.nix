@@ -6,7 +6,7 @@
     flake-utils.url = "github:numtide/flake-utils";
     solanaSrc = {
       #url = "github:solana-labs/solana?rev=15456493b4161ca0c673995f3cd0c69b815a945a";
-      url = "github:solana-labs/solana?ref=v1.10.24";
+      url = "github:solana-labs/solana?ref=v1.10.27";
       flake = false;
     };
     fenix = {
@@ -20,7 +20,7 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
         stdenv = pkgs.stdenv;
-        solanaVersion = "1.10.24";
+        solanaVersion = "1.10.27";
 
         meta = with pkgs.stdenv; with pkgs.lib; {
           homepage = "https://solana.com/";
@@ -88,7 +88,7 @@
           pname = "solana-cli";
           version = solanaVersion;
           buildTargets = [ "solana" "solana-keygen" ];
-          cargoSha256 = "sha256-4t5LqNkjNCEp1ygh7p7i4wP879fS83gsf2uoYz3oe3k=";
+          cargoSha256 = "sha256-kPQ03yMIeV4cioWekWemkVjzA/ZrCljLeOKIZfkZUKo=";
           #cargoSha256 = pkgs.lib.fakeSha256;
         };
 
@@ -97,7 +97,7 @@
           version = solanaVersion;
           buildTargets = [ "cargo-build-bpf" "cargo-test-bpf" "solana-test-validator" ];
           patches = [ ./patches/cargo-build-bpf-tools.patch ./patches/bpf-scripts-env.patch ];
-          cargoSha256 = "sha256-yOBgcFBfwwMNnsn0Q1qSwDWJ4vkuZBlRGP3q1PQbfZw=";
+          cargoSha256 = "sha256-CPJGW39cQo/O9Ti8Fm8lumTypic521J9UnCeI1Rk8nY=";
           #cargoSha256 = pkgs.lib.fakeSha256;
           postInstall = ''
             	mkdir -p $out/bpf/dependencies/
